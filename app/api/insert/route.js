@@ -1,33 +1,23 @@
-// app/api/insert/route.js
-
 import { NextResponse } from 'next/server';
-import { Client } from 'pg';
+import { Pool } from 'pg';
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
 export async function POST(request) {
-  const body = await request.json();
-  const { device_id, temperature, humidity } = body;
-
-  const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
-  });
+  const data = await request.json();
+  const { device_id, temperature, humidity } = data;
 
   try {
-    await client.connect();
-    await client.query(
-      'INSERT INTO sensor_data (device_id, temperature, humidity, created_at) VALUES ($1, $2, $3, NOW())',
+    await pool.query(
+      'INSERT INTO sensor_data (device_id, temperature, humidity) VALUES ($1, $2, $3)',
       [device_id, temperature, humidity]
     );
-    return NextResponse.json({
-      status: 'ok',
-      device_id,
-      temperature,
-      humidity
-    });
+    return NextResponse.json({ status: 'ok', ...data });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: 'Database insert failed' }, { status: 500 });
-  } finally {
-    await client.end();
+    return NextResponse.json({ status: 'error', message: error.message });
   }
 }
